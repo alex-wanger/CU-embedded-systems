@@ -1,0 +1,30 @@
+int ledPin = 13;              
+
+void setup() {
+  pinMode(ledPin, OUTPUT);     
+}
+
+void blink() {
+  for (int i = 0; i < 3; i ++) {
+    digitalWrite(ledPin, HIGH);  
+    delay(1000);                 
+    digitalWrite(ledPin, LOW);  
+    delay(1000);  
+  }
+}
+
+void line() {
+  for (int i = 0; i < 3; i++) {
+    digitalWrite(ledPin, HIGH);  
+    delay(5000);                 
+    digitalWrite(ledPin, LOW);  
+    delay(500); 
+  }
+  
+}
+
+void loop() {
+  blink();
+  line();
+  blink();
+}
