@@ -1,0 +1,131 @@
+diff --git a/cooper-union/summer-stem/embedded-systems/2025/students/alex/submissions/01/1.1/1.1.ino b/cooper-union/summer-stem/embedded-systems/2025/students/alex/submissions/01/1.1/1.1.ino
+index 85ccfc7..d915117 100644
+--- a/cooper-union/summer-stem/embedded-systems/2025/students/alex/submissions/01/1.1/1.1.ino
++++ b/cooper-union/summer-stem/embedded-systems/2025/students/alex/submissions/01/1.1/1.1.ino
+@@ -1,26 +1,27 @@
+-int ledPin = 13;              
++// jk: we typically define constants in UPPER_SNAKE_CASE
++#define LED_PIN 13
+ 
+ void setup() {
+-  pinMode(ledPin, OUTPUT);     
++  pinMode(LED_PIN, OUTPUT);
+ }
+ 
+ void blink() {
+-  for (int i = 0; i < 3; i ++) {
+-    digitalWrite(ledPin, HIGH);  
+-    delay(1000);                 
+-    digitalWrite(ledPin, LOW);  
+-    delay(1000);  
++  for (int i = 0; i < 3; i++) {
++    digitalWrite(LED_PIN, HIGH);
++    delay(1000);
++    digitalWrite(LED_PIN, LOW);
++    delay(1000);
+   }
+ }
+ 
+ void line() {
+   for (int i = 0; i < 3; i++) {
+-    digitalWrite(ledPin, HIGH);  
+-    delay(5000);                 
+-    digitalWrite(ledPin, LOW);  
+-    delay(500); 
++    digitalWrite(LED_PIN, HIGH);
++    delay(5000);
++    digitalWrite(LED_PIN, LOW);
++    delay(500);
+   }
+-  
++
+ }
+ 
+ void loop() {
+diff --git a/cooper-union/summer-stem/embedded-systems/2025/students/alex/submissions/01/1.2/1.2.ino b/cooper-union/summer-stem/embedded-systems/2025/students/alex/submissions/01/1.2/1.2.ino
+index 1ab8d80..f5d1ed2 100644
+--- a/cooper-union/summer-stem/embedded-systems/2025/students/alex/submissions/01/1.2/1.2.ino
++++ b/cooper-union/summer-stem/embedded-systems/2025/students/alex/submissions/01/1.2/1.2.ino
+@@ -1,48 +1,52 @@
+-int ledPin;
++// jk: define a constant for the pin you're using over a variable who's
++// value can change during the course of the program
++#define LED_PIN 13
++
++// jk: avoid using magic numbers where possible. using a constant here
++// makes your code easier to read but also to adjust the parameters at a
++// later time if you decide to change it!
++#define STEP_MS 50
++#define MAX_MS  500
++
++// jk: same applies to the serial monitor
++#define SERIAL_BAUD 9600
++
++
+ bool saturated;
+-int counter;    
++int counter;
+ 
+ void setup() {
+-  ledPin = 13;
+   saturated = false;
+-  counter = 50;
+-  pinMode(ledPin, OUTPUT);     
+-  Serial.begin(9600);
++  counter = STEP_MS;
++  pinMode(LED_PIN, OUTPUT);
++  Serial.begin(SERIAL_BAUD);
+ }
+ 
+ void blink() {
+   if (saturated) {
+-      digitalWrite(ledPin, HIGH);  
+-      delay(counter - 50);    
+-      counter -= 50;                 
+-      digitalWrite(ledPin, LOW);  
+-      delay(counter - 50);  
+-      counter -= 50;    
++      digitalWrite(LED_PIN, HIGH);
++      delay(counter - STEP_MS);
++      counter -= STEP_MS;
++      digitalWrite(LED_PIN, LOW);
++      delay(counter - STEP_MS);
++      counter -= STEP_MS;
+   } else {
+-        digitalWrite(ledPin, HIGH);  
+-        delay(counter + 50);     
+-        counter += 50;          
+-        digitalWrite(ledPin, LOW);  
+-        delay(counter + 50);  
+-        counter += 50;
++        digitalWrite(LED_PIN, HIGH);
++        delay(counter + STEP_MS);
++        counter += STEP_MS;
++        digitalWrite(LED_PIN, LOW);
++        delay(counter + STEP_MS);
++        counter += STEP_MS;
+     }
+ }
+ 
+-// void line() {
+-//   for (int i = 0; i < 3; i++) {
+-//     digitalWrite(ledPin, HIGH);  
+-//     delay(5000);                 
+-//     digitalWrite(ledPin, LOW);  
+-//     delay(500); 
+-//   }
+-  
+-// }
++// jk: remove dead code!
+ 
+ void loop() {
+-  if (counter > 500) {
++  if (counter > MAX_MS) {
+     saturated = true;
+   }
+-  else if (counter <= 50) {
++  else if (counter <= STEP_MS) {
+     saturated = false;
+   }
+   Serial.println(counter);
+

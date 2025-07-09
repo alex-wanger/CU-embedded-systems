@@ -1,0 +1,51 @@
+int ledPin;
+bool saturated;
+int counter;    
+
+void setup() {
+  ledPin = 13;
+  saturated = false;
+  counter = 50;
+  pinMode(ledPin, OUTPUT);     
+  Serial.begin(9600);
+}
+
+void blink() {
+  if (saturated) {
+      digitalWrite(ledPin, HIGH);  
+      delay(counter - 50);    
+      counter -= 50;                 
+      digitalWrite(ledPin, LOW);  
+      delay(counter - 50);  
+      counter -= 50;    
+  } else {
+        digitalWrite(ledPin, HIGH);  
+        delay(counter + 50);     
+        counter += 50;          
+        digitalWrite(ledPin, LOW);  
+        delay(counter + 50);  
+        counter += 50;
+    }
+}
+
+// void line() {
+//   for (int i = 0; i < 3; i++) {
+//     digitalWrite(ledPin, HIGH);  
+//     delay(5000);                 
+//     digitalWrite(ledPin, LOW);  
+//     delay(500); 
+//   }
+  
+// }
+
+void loop() {
+  if (counter >= 500) {
+    saturated = true;
+  }
+  else if (counter <= 50) {
+    saturated = false;
+  }
+  Serial.println(counter);
+  Serial.println(saturated);
+  blink();
+}
