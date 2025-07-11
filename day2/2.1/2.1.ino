@@ -24,7 +24,7 @@ void setup() {
   pinMode(POTENTIMETER, INPUT);
   Serial.begin(SERIAL_NUMBER);
   RAW_READING = 0;
-}
+}2
 
 void loop() {
   int STORED_STATE_RAW_READING = analogRead(A0);
