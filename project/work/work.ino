@@ -1,4 +1,4 @@
-static const char MESSAGE[] = "I LOVE WILLY ";
+static const char MESSAGE[] = "I LOVE ILLY ";
 
 static const uint8_t WINDOW_SIZE = 4;
 
@@ -10,16 +10,15 @@ static const uint16_t DELAY = 1000;
 static const uint8_t DIGITS = 10;
 static const uint8_t INVALID_INDEX = 0;
 
-static uint8_t ascii_to_index(const unsigned char c)
-{
+static uint8_t ascii_to_index(const unsigned char c) {
   if ((c >= '0') && (c <= '9'))
-  return c - '0';
+    return c - '0';
   if ((c >= 'A') && (c <= 'Z'))
-  return c - 'A' + DIGITS;
+    return c - 'A' + DIGITS;
   if ((c >= 'a') && (c <= 'z'))
-  return c - 'a' + DIGITS;
+    return c - 'a' + DIGITS;
   if ((c == " "))
-  return 35;
+    return 35;
 
   return INVALID_INDEX;
 }
@@ -48,18 +47,18 @@ const uint8_t SEGPIN[SEG_TOTAL] = {
 };
 
 enum {
-DIG1,
-DIG2,
-DIG3,
-DIG4,
-DIGTOTAL
+  DIG1,
+  DIG2,
+  DIG3,
+  DIG4,
+  DIGTOTAL
 };
 
 const uint8_t DIGIT_TO_PIN[DIGTOTAL] = {
-[DIG1] = 10,
-[DIG2] = 11,
-[DIG3] = 12,
-[DIG4] = 13
+  [DIG1] = 10,
+  [DIG2] = 11,
+  [DIG3] = 12,
+  [DIG4] = 13
 };
 
 static const uint8_t BITMASK[36] = {
@@ -75,29 +74,29 @@ static const uint8_t BITMASK[36] = {
   [9] = 0,
 
 
-  [10] = 0, //a
-  [11] = 0, //b
-  [12] = 0b00111001, //c
-  [13] = 0, //d
-  [14] = 0b01111001, //e
-  [15] = 0, //f
+  [10] = 0,           //a
+  [11] = 0,           //b
+  [12] = 0b00111001,  //c
+  [13] = 0,           //d
+  [14] = 0b01111001,  //e
+  [15] = 0,           //f
   [16] = 0,
   [17] = 0,
   [18] = 0b00000100,
   [19] = 0,
   [20] = 0,
-  [21] = 0b00111000, //L
-  [22] = 0, //m
-  [23] = 0b11010100, //n
-  [24] = 0b01011100, //o
-  [25] = 0b01110011, //p
-  [26] = 0, //q
+  [21] = 0b00111000,  //L
+  [22] = 0,           //m
+  [23] = 0b11010100,  //n
+  [24] = 0b01011100,  //o
+  [25] = 0b01110011,  //p
+  [26] = 0,           //q
   [27] = 0b11010000,
   [28] = 0,
   [29] = 0b11111000,
-  [30] = 0b10011100, //u
-  [31] = 0b00011100, //v
-  [32] = 0b10111000, //w
+  [30] = 0b10011100,  //u
+  [31] = 0b00011100,  //v
+  [32] = 0b10111000,  //w
   [33] = 0,
   [34] = 0b01101110,
   [35] = 0
@@ -138,7 +137,7 @@ void lights() {
     uint8_t ascii = ascii_to_index(MESSAGE[i + index % MESSAGES_SIZE]);
 
     uint8_t mask = BITMASK[ascii];
-    
+
     Serial.println(ascii);
 
     for (int seg = 0; seg < SEG_TOTAL; seg++) {
@@ -147,5 +146,3 @@ void lights() {
     delay(5);
   }
 }
-
-

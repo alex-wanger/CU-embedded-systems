@@ -1,0 +1,116 @@
+diff --git a/cooper-union/summer-stem/embedded-systems/2025/students/alex/submissions/projects/1/work/work.ino b/cooper-union/summer-stem/embedded-systems/2025/students/alex/submissions/projects/1/work/work.ino
+index 1a69482..caed6b1 100644
+--- a/cooper-union/summer-stem/embedded-systems/2025/students/alex/submissions/projects/1/work/work.ino
++++ b/cooper-union/summer-stem/embedded-systems/2025/students/alex/submissions/projects/1/work/work.ino
+@@ -34,25 +34,31 @@ enum {
+   F,
+   G,
+   DP,
+-  SEG_TOTAL
++  // jk: nit: include trailing commas on newline to decrease diff sizes
++  SEG_TOTAL,
+ };
++
++// jk: nit: align whitespace to increase readability
+ const uint8_t SEGPIN[SEG_TOTAL] = {
+-  [A] = 8,
+-  [B] = 4,
+-  [C] = 5,
+-  [D] = 7,
+-  [E] = 9,
+-  [F] = 6,
+-  [G] = 2,
+-  [DP] = 3
++  [A]  = 8,
++  [B]  = 4,
++  [C]  = 5,
++  [D]  = 7,
++  [E]  = 9,
++  [F]  = 6,
++  [G]  = 2,
++  [DP] = 3,
+ };
+ 
++// jk: having an enum for digits is redundant as we already refer to
++// them in terms of a numeric index. unless you digits have special
++// names or numeric values, this is redundant to have!
+ enum {
+-DIG1,
+-DIG2,
+-DIG3,
+-DIG4,
+-DIGTOTAL
++  DIG1,
++  DIG2,
++  DIG3,
++  DIG4,
++  DIGTOTAL,
+ };
+ 
+ const uint8_t DIGIT_TO_PIN[DIGTOTAL] = {
+@@ -75,6 +81,9 @@ static const uint8_t BITMASK[36] = {
+   [9] = 0,
+ 
+ 
++  // jk: the code will change and the comments may not! use ASCII values
++  // with some arithmetic to ensure this doesn't happen and to have
++  // self-documenting code!
+   [10] = 0, //a
+   [11] = 0, //b
+   [12] = 0b00111001, //c
+@@ -104,6 +113,9 @@ static const uint8_t BITMASK[36] = {
+ };
+ 
+ void setup() {
++  // jk: don't forget to set the initial state of the pins so that the
++  // rest of the code can assume a sane state!
++
+   for (uint8_t i = 0; i < SEG_TOTAL; i++) {
+     pinMode(SEGPIN[i], OUTPUT);
+   }
+@@ -116,6 +128,8 @@ void loop() {
+   lights();
+ }
+ 
++// jk: this function is redundant as it is just the body of loop() under
++// a different name
+ void lights() {
+   static uint8_t index = 0;
+   static unsigned long lastUpdate = 0;
+@@ -125,24 +139,27 @@ void lights() {
+     lastUpdate = millis();
+   }
+ 
+-  for (int i = 0; i < DIGTOTAL; i++) {
++  // jk: use size_t for array indexing, it is a special type just for
++  // indexing and describing the size of things
++  for (size_t i = 0; i < DIGTOTAL; i++) {
++    // jk: if you define a constant in terms of HIGH/LOW to indicate if
++    // a pin is on or off, you wouldn't need this comment!
+ 
+-    //turn everythhing off
+-    for (int j = 0; j < DIGTOTAL; j++) {
++    for (size_t j = 0; j < DIGTOTAL; j++) {
+       digitalWrite(DIGIT_TO_PIN[j], HIGH);
+     }
+ 
+     digitalWrite(DIGIT_TO_PIN[i], LOW);
+ 
+-    uint8_t ascii = ascii_to_index(MESSAGE[i + index % MESSAGES_SIZE]);
+-
+-    uint8_t mask = BITMASK[ascii];
++    // jk: try to make everything constant when possible
++    const uint8_t ascii = ascii_to_index(MESSAGE[i + index % MESSAGES_SIZE]);
++    const uint8_t mask  = BITMASK[ascii];
+ 
+     for (int seg = 0; seg < SEG_TOTAL; seg++) {
+       digitalWrite(SEGPIN[seg], (mask & (1 << seg)) ? HIGH : LOW);
+     }
++
++    // jk: magic number!
+     delay(5);
+   }
+ }
+-
+-
+
