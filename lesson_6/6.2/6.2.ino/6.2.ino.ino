@@ -20,7 +20,7 @@ uint32_t current_time;
 
 const uint8_t SERIAL_BUFFER = 9600;
 
-uint8_t PRODUCT_SELECTION_COUNTER;
+uint8_t product_selection_counter;
 uint8_t PRODUCT_SELECTION_PIN;
 
 uint8_t RESET_PIN;
@@ -29,7 +29,7 @@ uint8_t MIN_NUM_QUARTERS;
 static uint8_t current_number_quarters;
 uint8_t QUARTER_ADDER_PIN;
 uint32_t time_since_last_quarter;
-uint32_t DELAY_FOR_QUARTERS = 30000;
+uint32_t DELAY_FOR_QUARTERS = 30000; // ms -> 30 seconds
 
 struct PRODUCT {
   uint8_t QUANTITY;
@@ -55,7 +55,7 @@ void setup() {
   QUARTER_ADDER_PIN = 2;
   PRODUCT_SELECTION_PIN = 5;
   
-  PRODUCT_SELECTION_COUNTER = 0;
+  product_selection_counter = 0;
 
   RESET_PIN = 9;
   
@@ -88,7 +88,7 @@ void loop() {
   Serial.println("NAME");
   Serial.println(CURRENT_PRODUCT.NAME);
   Serial.println("PRODUCT NUMBER");
-  Serial.println(PRODUCT_SELECTION_COUNTER);
+  Serial.println(product_selection_counter);
 
   current_time = millis();
 
@@ -134,12 +134,12 @@ void STATE_MACHINE() {
 
 void AWAIT() {
   if (BUTTON_DEBOUNCER(PRODUCT_SELECTION_PIN)) {
-    PRODUCT_SELECTION_COUNTER += 1;
-    PRODUCT_SELECTION_COUNTER = PRODUCT_SELECTION_COUNTER % 3;
+    product_selection_counter += 1;
+    product_selection_counter = product_selection_counter % 3;
   }
 
   if (current_number_quarters >= MIN_NUM_QUARTERS) {
-    CURRENT_PRODUCT = PRODUCT_LIST[PRODUCT_SELECTION_COUNTER];
+    CURRENT_PRODUCT = PRODUCT_LIST[product_selection_counter];
     state = STATE_DISPENSE;
   }
 }
