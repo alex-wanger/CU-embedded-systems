@@ -10,13 +10,13 @@ CFLAGS += \
     -std=gnu17 \
 
 .PHONY: all
-all: twi.elf
+all: main.elf
 
 .PHONY: clean
 clean:
 	@rm -rvf *.d *.elf *.o
 
-twi.elf: twi.o
+main.elf: main.o
 	$(CC) $(CFLAGS) -o $@ $^
 
 %.o: %.c

@@ -3,84 +3,63 @@
 #include <limits.h>
 #include <stdbool.h>
 #include <stddef.h>
-#include <stdint.h>j
+#include <stdint.h>
+#include <util/twi.h>
 #include "twi.h"
-
 static volatile twi_isr_t twi_isr;
 
-static bool scl_parameters(const uint32_t scl_frequency, uint8_t *output_array)
+static bool scl_parameters(uint8_t twbr_value)
 {
-    if (output_array[0] == 0 || output_array[1] == 0)
-    {
-        return false;
-    }
-    if ((((F_CPU / scl_frequency) - 16) / 2) != output_array[1] * output_array[0])
+    if (twbr_value == 0)
     {
         return false;
     }
     return true;
 }
 
-void calculate_clock(uint64_t SRC, uint8_t *output_array)
+void calculate_clock(uint64_t src, uint8_t *output_array)
 {
-    // can do this cleaner with 1 if statement and a forloop
-    uint8_t prescaler = 0;
-    uint8_t twbr = 0;
+    static const uint16_t prescaler_factors[4] = {1, 4, 16, 64};
 
-    uint64_t TWBR_TIMES_SCALER = (((F_CPU / SRC) - 16) / 2);
-    if (TWBR_TIMES_SCALER > 0 && TWBR_TIMES_SCALER < 255)
+    uint64_t base = ((F_CPU / src) - 16) / 2;
+
+    for (uint8_t code = 0; code < 4; code++)
     {
-        prescaler = 1;
-        twbr = TWBR_TIMES_SCALER;
+        uint64_t twbr_val = base / prescaler_factors[code];
+        if (twbr_val > 0 && twbr_val < 256)
+        {
+            output_array[0] = code;              // TWSR prescaler code (0..3)
+            output_array[1] = (uint8_t)twbr_val; // TWBR register value
+            return;
+        }
     }
-    else if (TWBR_TIMES_SCALER > 255 && TWBR_TIMES_SCALER < 1023)
-    {
-        prescaler = 4;
-        twbr = (TWBR_TIMES_SCALER / 4);
-    }
-    else if (TWBR_TIMES_SCALER > 1023 && TWBR_TIMES_SCALER < 4095)
-    {
-        prescaler = 16;
-        twbr = (TWBR_TIMES_SCALER / 16);
-    }
-    else if (TWBR_TIMES_SCALER > 4095 && TWBR_TIMES_SCALER < 16383)
-    {
-        prescaler = 64;
-        twbr = (TWBR_TIMES_SCALER / 64);
-    }
-    (output_array)[0] = prescaler; // Store the prescaler value
-    (output_array)[1] = twbr;      // Store the TWBR value
+    twi_isr.status = INIT_FAILURE;
 }
 
 twi_status_t twi_init(const uint32_t scl_frequency)
 {
-    // initialize pull-up resistors
-    DDRD = DDRD & 0b11001111;   // set as pins 5 and 4 as low
-    PORTD = PORTD | 0b11001111; // set the associated port to high
+    // initialize pull-up resistors (assuming SDA/SCL on PD4/PD5)
+    DDRD = DDRD & 0b11001111;         // set pins 4 and 5 as inputs
+    PORTD |= (1 << PD4) | (1 << PD5); // enable pull-up resistors
 
     uint8_t output[2];
-    calculate_clock(scl_frequency, (uint8_t *)&output);
-    if (scl_parameters(output[1], (uint8_t *)&output))
+
+    calculate_clock(scl_frequency, output);
+
+    if (scl_parameters(output[1]))
     {
-        // Set the prescaler and TWBR values
-        TWSR = output[1]; // Set prescaler
-        TWBR = output[0]; // Set TWBR value
+        TWSR |= output[0]; // Set prescaler
+        TWBR = output[1];  // Set TWBR value
     }
     else
     {
-        return INIT_FAILURE; // SOMETHING BAD IS HAPPENING
-    };
+        return INIT_FAILURE;
+    }
 
     twi_isr.idle = true;
     twi_isr.status = NOMINAL;
 
-    TWCR = (1 << TWEN) | (1 << TWIE);
-
-    if (!twi_isr.idle)
-    {
-        return BUSY;
-    }
-    twi_isr.idle = true;
+    TWCR |= (1 << TWEN) | (1 << TWIE) | (1 << TWEA);
 
     return SUCCESS;
 }
@@ -93,11 +72,13 @@ twi_status_t twi_enqueue(twi_message_t *messages, size_t count)
 
     if (!(TWCR & (1 << TWEN)))
     {
+        SREG = sreg;
         return DISABLED;
     }
 
-    if (TWCR & (1 << TWIE))
+    if (!twi_isr.idle)
     {
+        SREG = sreg;
         return BUSY;
     }
 
@@ -105,136 +86,151 @@ twi_status_t twi_enqueue(twi_message_t *messages, size_t count)
         .idle = false,
         .messages = messages,
         .message_count = count,
-    };
+        .status = NOMINAL};
+
+    TWCR |= (1 << TWSTA);
 
     SREG = sreg;
-
-    TWCR = TWCR | (1 << TWSTA); // start the call !
 
     return SUCCESS;
 }
 
-int main(void)
+twi_status_t twi_status(void)
 {
-    // This is a simple C program that does nothing
-    twi_init(100000);
-    return 0;
+    uint8_t sreg = SREG;
+
+    cli();
+
+    twi_status_t status = twi_isr.status;
+
+    SREG = sreg;
+
+    return status;
 }
 
-// TWSR values
-// Mnemonics:
-// TW_MT_xxx - master transmitter
-// TW_MR_xxx - master receiver
-// TW_ST_xxx - slave transmitter
-// TW_SR_xxx - slave receiver
 ISR(TWI_vect)
 {
-
     if ((TWCR & (1 << TWWC)))
     {
-        twi_isr.status = OVERWRITE_FAILURE; // if we are in the TWWC state, we have a problem
-        twi_isr.idle = true;                // we are idle now
+        twi_isr.status = OVERWRITE_FAILURE;
+        twi_isr.idle = true;
+        TWCR = TWCR | (1 << TWINT);
         return;
     }
 
-    twi_message_t *message = twi_isr.messages;
+    twi_message_t *message = &twi_isr.messages[0];
+    uint8_t *buffer = message->buffer;
 
     switch (TW_STATUS)
     {
     case TW_START:
     case TW_REP_START:
         TWDR = message->address;
-
-        twi_isr.message_count--;
-        twi_isr.messages++;
-
-        uint8_t temp = TWCR & ~(1 << TWSTA); // we just got the start state, we need to clear it
-
-        bool read_write = message->address & 1; // if 1, we are writing ! if 0 we are reading
-
-        if (read_write)
-        {
-            temp |= 1 << TWEA;
-        }
-        // if we are writing, we need to clear the TWEA bit
-        TWCR = temp;
-
+        TWCR = (1 << TWEN) | (1 << TWIE) | (1 << TWINT);
         return;
-    case TW_MT_SLA_ACK: // SLA+W transmitted, ACK
 
-    case TW_MT_DATA_ACK:
-        if (message->size > 0)
-        {                            // no more bytes to send in the current message
-            --twi_isr.message_count; // we can subtract one from the number of messages left
-            uint8_t temp;
-            if (twi_isr.message_count != 0)
+    case TW_MT_SLA_ACK:  // SLA+W transmitted, ACK received
+    case TW_MT_DATA_ACK: // Data byte transmitted, ACK received
+        if (message->size == 0)
+        {
+            twi_isr.message_count--;
+            if (twi_isr.message_count > 0)
             {
-                ++twi_isr.messages; // move to next message
-                temp = TWSTA;       // repeated START
+                twi_isr.messages++;
+                TWCR = (1 << TWEN) | (1 << TWIE) | (1 << TWINT) | (1 << TWSTA); // repeated START
             }
             else
             {
-                temp = TWSTO; // STOP
-            }
-
-            if (temp == TWSTO)
-            {
+                TWCR = (1 << TWEN) | (1 << TWIE) | (1 << TWINT) | (1 << TWSTO); // STOP
                 twi_isr.status = NOMINAL;
+                twi_isr.idle = true;
             }
-
-            TWCR |= 1 << temp;
-
             return;
         }
 
-        TWDR = *(message->buffer++);
-
-        TWCR = (1 << TWEN) | (1 << TWIE) | (1 << TWINT);
-
+        // Send next data byte
+        TWDR = *(buffer);
+        buffer++;
+        message->size--;
+        TWCR = (1 << TWEN) | (1 << TWIE) | (1 << TWINT); // Prepare for next byte
         return;
 
-    case TW_MT_DATA_NACK: // Data byte transmitted, NACK received
-        *(message->buffer++) = TWDR;
-        TWCR = (1 << TWEN) |                               // TWI Interface enabled
-               (0 << TWIE) | (1 << TWINT) |                // Disable TWI Interrupt and clear the flag
-               (0 << TWEA) | (0 << TWSTA) | (1 << TWSTO) | // Initiate a STOP condition.
-               (0 << TWWC);                                //
-        break;
-
-    case TW_MT_ARB_LOST: // Arbitration lost in SLA+R/W or data bytes
-        // Handle arbitration lost
-        break;
     case TW_MR_SLA_ACK: // SLA+R transmitted, ACK received
-        // Handle SLA+R ACK
-        break;
-    case TW_MR_SLA_NACK: // SLA+R transmitted, NACK received
-        // Handle SLA+R NACK
-        break;
-    case TW_MR_DATA_ACK: // Data byte received, ACK sent
-        // Handle data byte ACK
-        break;
-    case TW_MR_DATA_NACK: // Data byte received, NACK sent
-        // Handle data byte NACK
-        break;
-    case TW_SR_SLA_ACK: // Own SLA+W received, ACK returned
-        // Handle own SLA+W ACK
-        break;
-    case TW_SR_GCALL_ACK: // General call received, ACK returned
-        // Handle general call ACK
-        break;
-    case TW_SR_DATA_ACK: // Data byte received, ACK returned
-        // Handle data byte received with ACK returned
-        break;
-    case TW_SR_GCALL_DATA_ACK: // General call data byte received, ACK returned
-        // Handle general call data byte with ACK returned
-        break;
-    case TW_SR_STOP: // Stop or repeated start condition received while addressed as slave
-        // Handle stop or repeated start condition in slave mode
-        break;
+        if (message->size > 1)
+        {
+            TWCR = (1 << TWEN) | (1 << TWIE) | (1 << TWINT) | (1 << TWEA); // ACK next byte
+        }
+        else
+        {
+            TWCR = (1 << TWEN) | (1 << TWIE) | (1 << TWINT); // NACK last byte
+        }
+        return;
+    case TW_MR_DATA_ACK: // Data byte received, ACK transmitted
+
+        *(buffer) = TWDR;
+        message->buffer++;
+        message->size--;
+
+        if (message->size > 1)
+        {
+            TWCR = (1 << TWEN) | (1 << TWIE) | (1 << TWINT) | (1 << TWEA); // ACK next byte
+        }
+
+        else if (message->size == 1)
+        {
+            TWCR = (1 << TWEN) | (1 << TWIE) | (1 << TWINT); // NACK last byte
+        }
+
+        else
+        {
+            // Current message complete
+            twi_isr.message_count--;
+            if (twi_isr.message_count > 0)
+            {
+                twi_isr.messages++;                                             // move to next message
+                TWCR = (1 << TWEN) | (1 << TWIE) | (1 << TWINT) | (1 << TWSTA); // repeated START
+            }
+            else
+            {
+                // All messages complete
+                TWCR = (1 << TWEN) | (1 << TWIE) | (1 << TWINT) | (1 << TWSTO); // STOP
+                twi_isr.status = NOMINAL;
+                twi_isr.idle = true;
+            }
+        }
+        return;
+
+    case TW_MR_DATA_NACK: // Data byte received, NACK transmitted
+        *(buffer) = TWDR; // Store the last received byte
+        buffer++;
+        message->size--;
+
+        twi_isr.message_count--;
+        if (twi_isr.message_count > 0)
+        {
+            twi_isr.messages++;                                             // move to next message
+            TWCR = (1 << TWEN) | (1 << TWIE) | (1 << TWINT) | (1 << TWSTA); // repeated START
+        }
+        else
+        {
+            // All messages complete
+            TWCR = (1 << TWEN) | (1 << TWIE) | (1 << TWINT) | (1 << TWSTO); // STOP
+            twi_isr.status = NOMINAL;
+            twi_isr.idle = true;
+        }
+        return;
+
+    case TW_MT_SLA_NACK:  // SLA+W transmitted, NACK received
+    case TW_MR_SLA_NACK:  // SLA+R transmitted, NACK received
+    case TW_MT_DATA_NACK: // Data byte transmitted, NACK received
+        twi_isr.status = NACK_FAILURE;
+        TWCR = (1 << TWEN) | (1 << TWIE) | (1 << TWINT) | (1 << TWSTO); // STOP
+        twi_isr.idle = true;
+        return;
+
     default:
-        TWCR = (1 << TWEN) |                               // Enable TWI-interface and release TWI pins
-               (0 << TWIE) | (0 << TWINT) |                // Disable Interrupt
-               (0 << TWEA) | (0 << TWSTA) | (0 << TWSTO) | // No Signal requests
-               (0 << TWWC);
+        TWCR = (1 << TWEN) | (1 << TWIE) | (1 << TWINT) | (1 << TWSTO);
+        twi_isr.idle = true;
+        return;
     }
 }
